@@ -1,0 +1,14 @@
+{
+  "codeowners": [
+    "@1DOTCODE1"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/1DOTCODE1/tamagotchi-remote-home-assistant",
+  "domain": "tamagotchi_remote",
+  "integration_type": "helper",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/1DOTCODE1/tamagotchi-remote-home-assistant/issues",
+  "name": "Tamagotchi Remote",
+  "requirements": [],
+  "version": "1.0.0"
+}

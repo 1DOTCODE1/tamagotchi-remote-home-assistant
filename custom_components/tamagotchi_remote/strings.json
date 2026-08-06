@@ -1,0 +1,63 @@
+{
+  "title": "Tamagotchi Remote",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Create a Tamagotchi Remote pair",
+        "description": "Create one room select and one generated JSON sensor. Add the integration again to create another pair.",
+        "data": {
+          "prefix": "Entity ID prefix",
+          "label_id": "Entity visibility label",
+          "allowed_area_ids": "Areas available in the room select"
+        },
+        "data_description": {
+          "prefix": "Lowercase prefix used for the initial entity IDs, for example tr1.",
+          "label_id": "Only entities carrying this label are included in the generated JSON.",
+          "allowed_area_ids": "Select and order the Home Assistant areas that should appear in the generated room select."
+        }
+      }
+    },
+    "error": {
+      "invalid_prefix": "Use 1 to 32 lowercase letters, numbers, or underscores, starting with a letter.",
+      "no_areas": "Select at least one area.",
+      "area_missing": "One or more selected areas no longer exist.",
+      "label_missing": "Select an existing label."
+    },
+    "abort": {
+      "already_configured": "A Tamagotchi Remote pair with this prefix already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure pair",
+        "description": "Change the visibility label or the areas offered by this pair. The integration reloads automatically after saving.",
+        "data": {
+          "label_id": "Entity visibility label",
+          "allowed_area_ids": "Areas available in the room select"
+        },
+        "data_description": {
+          "label_id": "Only entities carrying this label are included in the generated JSON.",
+          "allowed_area_ids": "Add, remove, or reorder the rooms shown by the select entity."
+        }
+      }
+    },
+    "error": {
+      "no_areas": "Select at least one area.",
+      "area_missing": "One or more selected areas no longer exist.",
+      "label_missing": "Select an existing label."
+    }
+  },
+  "entity": {
+    "select": {
+      "current_room": {
+        "name": "Current room"
+      }
+    },
+    "sensor": {
+      "room_entities": {
+        "name": "Room entities"
+      }
+    }
+  }
+}
