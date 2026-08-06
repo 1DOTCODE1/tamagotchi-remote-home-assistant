@@ -259,69 +259,110 @@ class TamagotchiRemoteController:
         for listener in tuple(self._listeners):
             listener()
 
-    @callback
-    def _build_payload(self) -> tuple[str, frozenset[str]]:
-        """Build the JSON payload matching the original Jinja template."""
-        area_id = self.selected_area_id
-        area_registry = ar.async_get(self.hass)
-        area = area_registry.async_get_area(area_id) if area_id else None
+@callback
+def _build_payload(self) -> tuple[str, frozenset[str]]:
+    """Build the JSON payload matching the original Jinja template."""
+    area_id = self.selected_area_id
+    area_registry = ar.async_get(self.hass)
+    area = area_registry.async_get_area(area_id) if area_id else None
 
-        if area is None:
-            return DEFAULT_ENTITY_LIST, frozenset()
+    if area is None:
+        return DEFAULT_ENTITY_LIST, frozenset()
 
-        entity_registry = er.async_get(self.hass)
-        device_registry = dr.async_get(self.hass)
+    entity_registry = er.async_get(self.hass)
+    device_registry = dr.async_get(self.hass)
 
-        area_entity_ids = {
-            entry.entity_id
-            for entry in er.async_entries_for_area(entity_registry, area.id)
-        }
-
-        for device in dr.async_entries_for_area(device_registry, area.id):
-            for entry in er.async_entries_for_device(entity_registry, device.id):
-                # A direct entity area assignment overrides the device's area.
-                if entry.area_id is None or entry.area_id == area.id:
-                    area_entity_ids.add(entry.entity_id)
-
-        labeled_entity_ids = {
-            entry.entity_id
-            for entry in er.async_entries_for_label(entity_registry, self.label_id)
-        }
-
-        visible_entity_ids = frozenset(area_entity_ids & labeled_entity_ids)
-        entities: list[dict[str, object]] = []
-
-        for entity_id in sorted(visible_entity_ids):
-            state = self.hass.states.get(entity_id)
-            if state is None:
-                continue
-
-            attributes = state.attributes
-            entities.append(
-                {
-                    "name": attributes.get("friendly_name", entity_id),
-                    "id": entity_id,
-                    "type": entity_id.split(".", 1)[0],
-                    "icon": attributes.get("icon") or "",
-                    "attributes": sorted(str(key) for key in attributes),
-                    "uom": attributes.get("unit_of_measurement") or "",
-                }
-            )
-
-        payload = json.dumps(
-            {
-                "room": area.name,
-                "entities": entities,
-            },
-            ensure_ascii=False,
-            separators=(",", ":"),
+    area_entity_ids = {
+        entry.entity_id
+        for entry in er.async_entries_for_area(
+            entity_registry,
+            area.id,
         )
+    }
 
-        _LOGGER.debug(
-            "Generated %s for %s using label %s",
-            ATTR_ENTITY_LIST,
-            self.prefix,
+    for device in dr.async_entries_for_area(
+        device_registry,
+        area.id,
+    ):
+        for entry in er.async_entries_for_device(
+            entity_registry,
+            device.id,
+        ):
+            # A direct entity area assignment overrides the device's area.
+            if entry.area_id is None or entry.area_id == area.id:
+                area_entity_ids.add(entry.entity_id)
+
+    labeled_entity_ids = {
+        entry.entity_id
+        for entry in er.async_entries_for_label(
+            entity_registry,
             self.label_id,
         )
+    }
 
-        return payload, visible_entity_ids
+    visible_entity_ids = frozenset(
+        area_entity_ids & labeled_entity_ids
+    )
+
+    visible_states = [
+        state
+        for entity_id in visible_entity_ids
+        if (
+            state := self.hass.states.get(entity_id)
+        ) is not None
+    ]
+
+    visible_states.sort(
+        key=lambda state: (
+            str(
+                state.attributes.get(
+                    "friendly_name",
+                    state.entity_id,
+                )
+            ).casefold(),
+            state.entity_id.casefold(),
+        )
+    )
+
+    entities: list[dict[str, object]] = []
+
+    for state in visible_states:
+        entity_id = state.entity_id
+        attributes = state.attributes
+
+        entities.append(
+            {
+                "name": attributes.get(
+                    "friendly_name",
+                    entity_id,
+                ),
+                "id": entity_id,
+                "type": entity_id.split(".", 1)[0],
+                "icon": attributes.get("icon") or "",
+                "attributes": sorted(
+                    str(key)
+                    for key in attributes
+                ),
+                "uom": attributes.get(
+                    "unit_of_measurement"
+                ) or "",
+            }
+        )
+
+    payload = json.dumps(
+        {
+            "room": area.name,
+            "entities": entities,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+    _LOGGER.debug(
+        "Generated %s for %s using label %s",
+        ATTR_ENTITY_LIST,
+        self.prefix,
+        self.label_id,
+    )
+
+    return payload, visible_entity_ids

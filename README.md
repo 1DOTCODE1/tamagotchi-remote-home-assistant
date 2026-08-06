@@ -116,7 +116,3 @@ The integration follows the behavior of the original template:
 - The visibility label must be assigned directly to the entity.
 - Entities without a current Home Assistant state are omitted until their state appears.
 - The JSON updates when the selected room, registry metadata, or relevant entity attributes change.
-
-## Development
-
-The repository contains HACS and Hassfest validation workflows. Before publishing, update the GitHub URLs and `codeowners` value in `manifest.json` if your repository or username differs.
