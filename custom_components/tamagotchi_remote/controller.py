@@ -12,6 +12,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import label_registry as lr
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.network import NoURLAvailableError, get_url
 
 from .const import (
     ATTR_ENTITY_LIST,
@@ -260,6 +261,26 @@ class TamagotchiRemoteController:
             listener()
 
     @callback
+    def _base_url(self) -> str:
+        """Return the address the device reaches Home Assistant at, such as http://192.168.1.10:8123.
+
+        The device downloads pictures from it, for example the cover of what a media player plays, which Home
+        Assistant reports as a path. The internal address is preferred, since the device is on the local network;
+        an external one is used only when no internal one is known, and Home Assistant Cloud never.
+        """
+        try:
+            return get_url(
+                self.hass,
+                allow_internal=True,
+                allow_external=True,
+                allow_cloud=False,
+                prefer_external=False,
+            ).rstrip("/")
+        except NoURLAvailableError:
+            _LOGGER.debug("No Home Assistant URL available for %s", self.prefix)
+            return ""
+
+    @callback
     def _build_payload(self) -> tuple[str, frozenset[str]]:
         """Build the JSON payload matching the original Jinja template."""
         area_id = self.selected_area_id
@@ -352,6 +373,7 @@ class TamagotchiRemoteController:
         payload = json.dumps(
             {
                 "room": area.name,
+                "base_url": self._base_url(),
                 "entities": entities,
             },
             ensure_ascii=False,
