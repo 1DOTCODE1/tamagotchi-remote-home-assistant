@@ -350,6 +350,14 @@ class TamagotchiRemoteController:
         for state in visible_states:
             entity_id = state.entity_id
             attributes = state.attributes
+            entity_type = entity_id.split(".", 1)[0]
+
+            uom = attributes.get("unit_of_measurement") or ""
+
+            # Climate entities have no unit_of_measurement attribute; Home
+            # Assistant reports their temperatures in the system unit.
+            if not uom and entity_type == "climate":
+                uom = self.hass.config.units.temperature_unit
 
             entities.append(
                 {
@@ -358,15 +366,13 @@ class TamagotchiRemoteController:
                         entity_id,
                     ),
                     "id": entity_id,
-                    "type": entity_id.split(".", 1)[0],
+                    "type": entity_type,
                     "icon": attributes.get("icon") or "",
                     "attributes": sorted(
                         str(key)
                         for key in attributes
                     ),
-                    "uom": attributes.get(
-                        "unit_of_measurement"
-                    ) or "",
+                    "uom": uom,
                 }
             )
 
