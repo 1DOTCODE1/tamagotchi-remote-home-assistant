@@ -281,6 +281,37 @@ class TamagotchiRemoteController:
             return ""
 
     @callback
+    def _vacuum_areas(
+        self,
+        entity_registry: er.EntityRegistry,
+        area_registry: ar.AreaRegistry,
+        entity_id: str,
+    ) -> list[dict[str, str]]:
+        """Return the areas a vacuum can clean with vacuum.clean_area, sorted by name.
+
+        Home Assistant keeps them in the entity registry, as the areas mapped to segments of the vacuum; they are
+        not in the state, so the device learns them from the payload.
+        """
+        entry = entity_registry.async_get(entity_id)
+
+        if entry is None:
+            return []
+
+        area_mapping = entry.options.get("vacuum", {}).get("area_mapping") or {}
+
+        areas = [
+            {"id": mapped_area_id, "name": mapped_area.name}
+            for mapped_area_id, segments in area_mapping.items()
+            if segments
+            and (mapped_area := area_registry.async_get_area(mapped_area_id))
+            is not None
+        ]
+
+        areas.sort(key=lambda mapped: mapped["name"].casefold())
+
+        return areas
+
+    @callback
     def _build_payload(self) -> tuple[str, frozenset[str]]:
         """Build the JSON payload matching the original Jinja template."""
         area_id = self.selected_area_id
@@ -359,22 +390,32 @@ class TamagotchiRemoteController:
             if not uom and entity_type == "climate":
                 uom = self.hass.config.units.temperature_unit
 
-            entities.append(
-                {
-                    "name": attributes.get(
-                        "friendly_name",
-                        entity_id,
-                    ),
-                    "id": entity_id,
-                    "type": entity_type,
-                    "icon": attributes.get("icon") or "",
-                    "attributes": sorted(
-                        str(key)
-                        for key in attributes
-                    ),
-                    "uom": uom,
-                }
-            )
+            entity: dict[str, object] = {
+                "name": attributes.get(
+                    "friendly_name",
+                    entity_id,
+                ),
+                "id": entity_id,
+                "type": entity_type,
+                "icon": attributes.get("icon") or "",
+                "attributes": sorted(
+                    str(key)
+                    for key in attributes
+                ),
+                "uom": uom,
+            }
+
+            # Only vacuums that clean by area carry the list; the device shows it as a menu.
+            if entity_type == "vacuum" and (
+                areas := self._vacuum_areas(
+                    entity_registry,
+                    area_registry,
+                    entity_id,
+                )
+            ):
+                entity["areas"] = areas
+
+            entities.append(entity)
 
         payload = json.dumps(
             {
